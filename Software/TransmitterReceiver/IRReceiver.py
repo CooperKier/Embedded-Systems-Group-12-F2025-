@@ -1,7 +1,7 @@
 import ir_rx
 import machine
 from machine import Pin
-from ir_rx.nec import NEX_8
+from ir_rx.nec import NEC_8
 from ir_rx.print_error import print_error
 
 def ir_callback(data, addr, _):
