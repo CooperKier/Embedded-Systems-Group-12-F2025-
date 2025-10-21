@@ -20,7 +20,9 @@ ir_receiver.error_function(print_error)
 
 pwm_rate = 2000
 ain1_ph = Pin(14, Pin.OUT)
-ain1_en = PWM(15, freq = pwm_rate, duty_u16=0)
+ain1_en = PWM(Pin(15))
+ain1_en.freq(pwm_rate)
+ain1_en.duty_u16(0)
 
 def ir_callback(data, addr, _):
   print(f"Received NEC Command! Data: 0x{data:02x} , Addr: 0x{addr:02x}")
