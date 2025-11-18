@@ -1,68 +1,81 @@
-import ir_tx
-import ir_rx
-import time
 import machine
+import time
 from machine import Pin
-from ir_tx.nec import NEC
-from ir_rx.nec import NEC_8 # Use the NEC 8-bit class
-from ir_rx.print_error import print_error # for debugging
 from machine import PWM
 
-#Define motor speed through PWM frequency
-pwm_rate = 2000
 
-#Define motor A control signals
-ain1_ph = Pin(14, Pin.OUT) # Initialize GP14 as an OUTPUT
-ain2_en = PWM(15, freq = pwm_rate, duty_u16 = 0)
+pwm_freq = 2000
+pwm_duty = 32500
 
-#Define motor B control signals
-bin1_ph = Pin(12, Pin.OUT)
-bin2_en = PWM(13, freq = pwm_rate, duty_u16 = 0)
+# Define input pins individually
+# input19 = Pin(19, Pin.IN, Pin.PULL_DOWN) # Right, D3
+# input18 = Pin(18, Pin.IN, Pin.PULL_DOWN) # Left, D2
+# input17 = Pin(17, Pin.IN, Pin.PULL_DOWN) # Backwards, D1
+# input16 = Pin(16, Pin.IN, Pin.PULL_DOWN) # Forwards, D0
 
-#Define transmitter pins and commands
-tx_pin = Pin(17,Pin.OUT,value=0)
-device_addr = 0x01
-transmitter = NEC(tx_pin)
-commands = [0x01,0x02,0x03,0x04]
+input4 = Pin(4, Pin.IN, Pin.PULL_DOWN) # Right, D3
+input5 = Pin(5, Pin.IN, Pin.PULL_DOWN) # Left, D2
+input6 = Pin(6, Pin.IN, Pin.PULL_DOWN) # Backwards, D1
+input7 = Pin(7, Pin.IN, Pin.PULL_DOWN) # Forwards, D0
 
-#Function called when ever signal is recived 
-def ir_callback(data, addr, _):
-    print(f"Received NEC command! Data: 0x{data:02X}, Addr: 0x{addr:02X}")
+# Define output pins individually
+output12 = Pin(12, Pin.OUT) # A Phase
+output13 = PWM(13, freq = pwm_freq, duty_u16 = 0) # A Enable
+output14 = Pin(14, Pin.OUT) # B Phase
+output15 = PWM(15, freq = pwm_freq, duty_u16 = 0) # B Enable
 
-    #Check fro value of data recieved
-    if data == 0x01:
-        print("Motor Forward") # Print to REPL
-        #Set polarity and speed of motor A
-        ain1_ph.high()
-        ain2_en.duty_u16(pwm)
+# Make sure all outputs start LOW
+output12.low()
+output13.duty_u16(0)
+output14.low()
+output15.duty_u16(0)
 
-        #Set polarity and speed of motor B
-        bin1_ph.low()
-        bin2_en.duty_u16(pwm)
+pwm = pwm_duty
 
-    if data == 0x04:
-        print("Motor Backward") # Print to REPL
-        #Invert polarity of motor A and B
-        ain1_ph.low()
-        bin1_ph.high()
+while True:
+    # ---input pin 16 FOWARDS---
+    while input7.value() == 1:
+        print("FOWARDS")
+        #A
+        output13.duty_u16(pwm)
+        output12.high()
+        #B
+        output15.duty_u16(pwm)
+        output14.high()
+        time.sleep(0.7)
 
-    if data == 0x03:
-        print("Motor OFF") # Print to REPL
-        #Turn both motors off
-        ain2_en.duty_u16(0)
-        bin2_en.duty_u16(0)
+    # ---input pin 17 BACKWARDS---
+    while (input6.value() == 1):
+        print("Backwards")
+        #A
+        output13.duty_u16(pwm)
+        output12.low()
+        #B
+        output15.duty_u16(pwm)
+        output14.low()
+        time.sleep(0.7)
 
-#Define IR reciever pins and function call
-ir_pin = Pin(20, Pin.IN, Pin.PULL_UP)
-ir_receiver = NEC_8(ir_pin, callback=ir_callback)
-ir_receiver.error_function(print_error)
-pwm = min(max(int(2**16 * abs(1)), 0), 65535)
+    # ---input pin 18 LEFT---
+    while input5.value() == 1:
+        print("Left")
+        #A Right Wheel
+        output13.duty_u16(pwm)
+        output12.high()
+        #B Left Wheel
+        output15.duty_u16(pwm)
+        output14.low()
+        time.sleep(0.7)
 
-#Keep curcuit running
-if __name__ == "__main__":
-    while True:
-        #Send transmitter signals
-        for command in commands:
-            transmitter.transmit(device_addr,command)
-            print("COMMANDS",hex(command),"TRANSMITTED.")
-            time.sleep(3)
+    # ---input pin 19 RIGHT---
+    while input4.value() == 1:
+        print("right")
+        #A Right Wheel
+        output13.duty_u16(pwm)
+        output12.low()
+        #B Left Wheel
+        output15.duty_u16(pwm)
+        output14.high()
+        time.sleep(0.7)
+    
+    output13.duty_u16(0)
+    output15.duty_u16(0)
